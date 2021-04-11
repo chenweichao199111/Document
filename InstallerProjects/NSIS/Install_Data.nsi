@@ -6,11 +6,12 @@ Unicode true
 ; 安装程序初始定义常量
 !define PRODUCT_NAME "打飞机"
 !define PACK_RESOURCE_PATH_EXE_NAME "Star Force"
-!define PRODUCT_VERSION "1.0.0"
+!define PRODUCT_VERSION "1.0.0.0"
 !define PRODUCT_PUBLISHER "江西科骏实业有限公司"
-!define PACK_RESOURCE_PATH "..\Builds\${PACK_RESOURCE_PATH_EXE_NAME}_Data\StreamingAssets"
-!define INSTALL_DEFAULT_PATH "$PROGRAMFILES\${PACK_RESOURCE_PATH_EXE_NAME}_Data\StreamingAssets"
+!define PACK_RESOURCE_PATH "..\Builds"
+!define INSTALL_DEFAULT_PATH "$PROGRAMFILES\${PACK_RESOURCE_PATH_EXE_NAME}"
 !define PRODUCT_UNINST_ROOT_KEY "HKLM"
+!define /date CUR_YEAR "%Y"
 
 SetCompressor /SOLID lzma
 SetCompressorDictSize 32
@@ -37,6 +38,16 @@ SetCompressorDictSize 32
 ; 安装界面包含的语言设置
 !insertmacro MUI_LANGUAGE "SimpChinese"
 
+;文件版本声明
+  VIProductVersion "${PRODUCT_VERSION}"
+  VIAddVersionKey /LANG=2052 "ProductName" "${PRODUCT_NAME}"
+  ; VIAddVersionKey /LANG=2052 "Comments" "免费使用，不限分发。"
+  VIAddVersionKey /LANG=2052 "CompanyName" "${PRODUCT_PUBLISHER}"
+  ; VIAddVersionKey /LANG=2052 "LegalTrademarks" "flighty"
+  VIAddVersionKey /LANG=2052 "LegalCopyright" "(C) ${CUR_YEAR} ${PRODUCT_PUBLISHER}"
+  VIAddVersionKey /LANG=2052 "FileDescription" "${PRODUCT_NAME}"
+  VIAddVersionKey /LANG=2052 "FileVersion" "${PRODUCT_VERSION}"
+
 ; 安装预释放文件
 !insertmacro MUI_RESERVEFILE_INSTALLOPTIONS
 ; ------ MUI 现代界面定义结束 ------
@@ -45,32 +56,29 @@ Name "${PRODUCT_NAME} ${PRODUCT_VERSION}_Data"
 OutFile "${PRODUCT_NAME} ${PRODUCT_VERSION}_Data.exe"
 ; Request application privileges for Windows Vista
 RequestExecutionLevel admin
+BrandingText "Nullsoft Install System ${NSIS_VERSION} -- built on ${__DATE__} at ${__TIME__}"
 InstallDir "${INSTALL_DEFAULT_PATH}"
-InstallDirRegKey ${PRODUCT_UNINST_ROOT_KEY} "Software\${PRODUCT_PUBLISHER}\${PRODUCT_NAME}" "Install_StreamingAssets_Dir"
-ShowInstDetails show
+InstallDirRegKey ${PRODUCT_UNINST_ROOT_KEY} "Software\${PRODUCT_PUBLISHER}\${PRODUCT_NAME}" "Install_Dir"
+ShowInstDetails hide
 Section "MainSection" SEC01
   SetOutPath "$INSTDIR"
   SetOverwrite ifnewer
-  File /r "${PACK_RESOURCE_PATH}\*.*"
+  File /r /x "${PACK_RESOURCE_PATH_EXE_NAME}_BackUpThisFolder_ButDontShipItWithYourGame" /x "MonoBleedingEdge" /x "*.dll" /x "UnityCrashHandler64.exe" /x "${PACK_RESOURCE_PATH_EXE_NAME}.exe" /x "Managed" /x "il2cpp_data" /x "Resources" /x "app.info" /x "boot.config" /x "globalgamemanagers*" /x "level*" /x "sharedassets*.assets*" "${PACK_RESOURCE_PATH}\*.*"
 SectionEnd
 
 #-- 根据 NSIS 脚本编辑规则，所有 Function 区段必须放置在 Section 区段之后编写，以避免安装程序出现未可预知的问题。--#
 ; .onInit函数在程序打开时就会执行
 Function .onInit
-	# 禁止多个安装程序实例 Begin
-	System::Call 'kernel32::CreateMutexA(i 0, i 0, t "mysetup") i .r1 ?e' #注意最后的?e
-	Pop $R0 #保存LastError返回值
-	;System::Call 'kernel32::CloseHandle(i r1) i.s' #此处不能关闭句柄，否则可以同时运行多个安装程序，注意r1 != R1,区分大小写
-	StrCmp $R0 0 norun
-	MessageBox MB_ICONEXCLAMATION|MB_TOPMOST "有一个安装向导已经运行！" /SD IDOK
-	SetErrorLevel 4
-	Quit
-	# 禁止多个安装程序实例 End
-	norun:
+	System::Call 'kernel32::CreateMutexA(i 0, i 0, t "myMutex") i .r1 ?e'
+ 	Pop $R0
+
+ 	StrCmp $R0 0 +3
+   MessageBox MB_OK|MB_ICONEXCLAMATION "安装程序已经在运行!"
+   Abort
 FunctionEnd
 
 Function Pageshow
-  ReadRegStr $0 ${PRODUCT_UNINST_ROOT_KEY} "Software\${PRODUCT_PUBLISHER}\${PRODUCT_NAME}" "Install_StreamingAssets_Dir"
+  ReadRegStr $0 ${PRODUCT_UNINST_ROOT_KEY} "Software\${PRODUCT_PUBLISHER}\${PRODUCT_NAME}" "Install_Dir"
   ${If} $0 == ""
   MessageBox MB_ICONEXCLAMATION|MB_TOPMOST "安装数据包前必须安装基础包" /SD IDOK
 	SetErrorLevel 4
